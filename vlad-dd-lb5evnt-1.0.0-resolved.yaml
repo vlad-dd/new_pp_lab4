@@ -1,0 +1,358 @@
+---
+openapi: 3.0.0
+info:
+  title: calendar api
+  description: This is a simple API
+  contact:
+    email: you@your-company.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/vlad-dd/Calendar-event/1.0.0
+  description: SwaggerHub API Auto Mocking
+paths:
+  /calendarEvents:
+    get:
+      tags:
+      - calendarevents
+      summary: all created events + events you participate in
+      operationId: searchInventory
+      responses:
+        "200":
+          description: return events that meet the criteria can be done by a registered user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        "400":
+          description: incorrect input
+      security:
+      - calendar_auth:
+        - read:events
+  /events/{eventId}:
+    get:
+      tags:
+      - events
+      summary: The user can find the event he needs by Id
+      description: Returns one event that a registered user can create
+      operationId: getEventById
+      parameters:
+      - name: eventId
+        in: path
+        description: The Id of the event you want to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Event'
+        "400":
+          description: incorrect id
+        "404":
+          description: event has not been found
+      security:
+      - calendar_auth:
+        - read:events
+    put:
+      tags:
+      - events
+      summary: Event edits, user can associate with it
+      operationId: editEvent
+      parameters:
+      - name: eventId
+        in: path
+        description: The ID of the event to be returned can be made by an authorized user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        $ref: '#/components/requestBodies/Event'
+      responses:
+        "405":
+          description: incorrect input
+      security:
+      - calendar_auth:
+        - write:events
+        - read:events
+    post:
+      tags:
+      - events
+      summary: adds event
+      description: Only registered user can add event to the list
+      operationId: addEvent
+      parameters:
+      - name: eventId
+        in: path
+        description: identificator of event to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        $ref: '#/components/requestBodies/Event'
+      responses:
+        "201":
+          description: object generated
+        "400":
+          description: incorrect object, incorrect input
+        "409":
+          description: this item already exists
+      security:
+      - calendar_auth:
+        - write:events
+        - read:events
+    delete:
+      tags:
+      - events
+      summary: deletes event
+      operationId: deleteEventById
+      parameters:
+      - name: eventId
+        in: path
+        description: The ID of the event to be deleted can be made by an authorized
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: bad id provided
+        "404":
+          description: event has not been found
+      security:
+      - calendar_auth:
+        - write:events
+        - read:events
+        - delete:events
+  /user:
+    post:
+      tags:
+      - user
+      summary: Create user
+      description: only registered user can do it
+      operationId: createUser
+      requestBody:
+        $ref: '#/components/requestBodies/User'
+      responses:
+        default:
+          description: Success
+  /user/login:
+    get:
+      tags:
+      - user
+      summary: Logs user into the system
+      operationId: loginUser
+      parameters:
+      - name: username
+        in: query
+        description: The user name for login
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: The password for login in clear text
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              style: simple
+              explode: false
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              style: simple
+              explode: false
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        "400":
+          description: Invalid username/password supplied
+  /user/logout:
+    get:
+      tags:
+      - user
+      summary: Logs out current logged in user session
+      operationId: logoutUser
+      responses:
+        default:
+          description: Success
+  /user/{username}:
+    get:
+      tags:
+      - user
+      summary: Get user by user name
+      operationId: getUserByName
+      parameters:
+      - name: username
+        in: path
+        description: The name you want to get.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/User'
+        "400":
+          description: incorrect username supplied
+        "404":
+          description: user has not found
+    put:
+      tags:
+      - user
+      summary: Updated user
+      description: This can only be done by a registered user.
+      operationId: updateUser
+      parameters:
+      - name: username
+        in: path
+        description: name that need to be updated
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        $ref: '#/components/requestBodies/User'
+      responses:
+        "400":
+          description: incorrect user
+        "404":
+          description: User  has not found
+    delete:
+      tags:
+      - user
+      summary: Delete user
+      description: This can only be done by a registered user.
+      operationId: deleteUser
+      parameters:
+      - name: username
+        in: path
+        description: name of user to delete
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "400":
+          description: incorrect username
+        "404":
+          description: User has not been found
+components:
+  schemas:
+    Event:
+      required:
+      - date
+      - description
+      - id
+      - name
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        name:
+          type: string
+          example: my b-day
+        date:
+          type: string
+          format: date-time
+          example: 2016-08-29T09:12:33.001Z
+        description:
+          type: string
+          example: when i was born
+        created_by:
+          $ref: '#/components/schemas/User'
+        invited_users:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+    User:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          example: random person
+        uid:
+          type: string
+          format: uuid
+  requestBodies:
+    Event:
+      description: Event object that needs to be added to the calendar
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Event'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Event'
+      required: true
+    User:
+      description: Created user object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/requestBodies/User'
+      required: true
+  securitySchemes:
+    calendar_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://virtserver.swaggerhub.com/vlad-dd/Calendar-event/1.0.0/oauth
+          scopes:
+            write:events: refactor events in your account
+            read:events: read  events
+            delete:events: delete  events
