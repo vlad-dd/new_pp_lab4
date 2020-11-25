@@ -1,0 +1,390 @@
+openapi: 3.0.0
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/vlad-dd/calendarrrrr/1.0.0
+info:
+  description: This is a simple API
+  version: "1.0.0"
+  title: Simple Inventory API
+  contact:
+    email: syrotiukvlad@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: event
+    description: Everything about your events
+  - name: user
+    description: Operations about user
+paths:
+  /event:
+    post:
+      tags:
+        - event
+      summary: Add a new event to the calendar
+      operationId: addEvent
+      responses:
+        '405':
+          description: Invalid input
+      security:
+        - WhatTheEvent_auth:
+            - 'write:events'
+            - 'read:events'
+      requestBody:
+        $ref: '#/components/requestBodies/Event'
+    put:
+      tags:
+        - event
+      summary: Add changes to the current event, in changes will link user to it
+      operationId: updateEvent
+      responses:
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Event not found
+        '405':
+          description: Validation exception
+      security:
+        - WhatTheEvent_auth:
+            - 'write:events'
+            - 'read:events'
+      requestBody:
+        $ref: '#/components/requestBodies/Event'
+    get:
+      tags:
+      - event
+      summary: List of all events, which user participate in
+      operationId: findALLEvents
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/requestBodies/Event'
+        404:
+          description: Events not found    
+  '/event/{eventId}':
+    get:
+      tags:
+        - event
+      summary: Find event by ID
+      description: Returns a single event
+      operationId: getEventById
+      parameters:
+        - name: eventId
+          in: path
+          description: ID of event to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Event not found
+      security:
+        - api_key: []
+    post:
+      tags:
+        - event
+      summary: Rename event
+      operationId: updateEventWithForm
+      parameters:
+        - name: eventId
+          in: path
+          description: ID of event that needs to be updated
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '405':
+          description: Invalid input
+      security:
+        - WhatTheEvent_auth:
+            - 'write:events'
+            - 'read:events'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Updated name of the event
+                  type: string
+                
+    delete:
+      tags:
+        - event
+      summary: Deletes an event
+      operationId: deleteEvent
+      parameters:
+        - name: api_key
+          in: cookie
+          required: false
+          schema:
+            type: string
+        - name: eventId
+          in: path
+          description: Event id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Event not found
+      security:
+        - WhatTheEvent_auth:
+            - 'write:events'
+            - 'read:events'
+  /user:
+    post:
+      tags:
+        - user
+      summary: Create user
+      description: This can only be done by the logged in user.
+      operationId: createUser
+      responses:
+        default:
+          description: successful operation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        description: Created user object
+        required: true
+  /user/login:
+    get:
+      tags:
+        - user
+      summary: Logs user into the system
+      operationId: loginUser
+      parameters:
+        - name: username
+          in: query
+          description: The user name for login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: The password for login in clear text
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        '400':
+          description: Invalid username/password supplied
+  /user/logout:
+    get:
+      tags:
+        - user
+      summary: Logs out current logged in user session
+      operationId: logoutUser
+      responses:
+        default:
+          description: successful operation
+  '/user/{username}':
+    get:
+      tags:
+        - user
+      summary: Get user by user name
+      operationId: getUserByName
+      parameters:
+        - name: username
+          in: path
+          description: The name that needs to be fetched. Use user1 for testing.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid username supplied
+        '404':
+          description: User not found
+    put:
+      tags:
+        - user
+      summary: Updated user
+      description: This can only be done by the logged in user.
+      operationId: updateUser
+      parameters:
+        - name: username
+          in: path
+          description: name that need to be updated
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          description: Invalid user supplied
+        '404':
+          description: User not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        description: Updated user object
+        required: true
+    delete:
+      tags:
+        - user
+      summary: Delete user
+      description: This can only be done by the logged in user.
+      operationId: deleteUser
+      parameters:
+        - name: username
+          in: path
+          description: The name that needs to be deleted
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          description: Invalid username supplied
+        '404':
+          description: User not found
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        phone:
+          type: string
+        userStatus:
+          type: integer
+          format: int32
+          description: User Status
+      xml:
+        name: User
+    Event:
+      type: object
+      required:
+        - event_name
+        - date
+        - description
+        - requested_users
+      properties:
+        id:
+          type: integer
+          format: int64
+        event_name:
+          type: string
+          example: winter holidays
+        date:
+          type: string
+          format: date-time
+          example: '2020-12-31'
+        description:
+          type: string
+          example: :) :) :) :) :)
+        status:
+          type: string
+          description: event status in the calendar
+          example: In progress
+        name:
+          type: string
+          example: vlad-dd
+        requested_users:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event' 
+        
+      xml:
+        name: Event
+  requestBodies:
+    Event:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Event'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/Event'
+      description: Event object that needs to be added to the calendar
+      required: true
+    UserArray:
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/User'
+      description: List of user object
+      required: true
+  securitySchemes:
+    WhatTheEvent_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://virtserver.swaggerhub.com/vlad-dd/calendarrrrr/1.0.0'
+
+          scopes:
+            'write:events': modify events in your account
+            'read:events': read your events
+    api_key:
+      type: apiKey
+      name: api_key
+      in: cookie
