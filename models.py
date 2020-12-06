@@ -29,3 +29,9 @@ class Event(Base):
     status = Column(String)
     name = Column(String)
     users = relationship("User", secondary = association_table, back_populates="events")
+
+
+class RequestedUsers(Base):
+    __tablename__ = 'RequestedUsers'
+    event_id = Column(Integer, ForeignKey('events.id'), primary_key=True, )
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True,)
