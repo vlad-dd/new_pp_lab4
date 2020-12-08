@@ -1,4 +1,5 @@
 import bcrypt
+from flask_bcrypt import *
 from flask import Flask, jsonify
 from flask_marshmallow import Marshmallow
 from models import Event, User, Column, String, Integer
@@ -13,69 +14,49 @@ api = Api(app)
 engine = create_engine('postgresql://postgres:4412712345@localhost:5432/postgres')
 Session = sessionmaker(bind=engine)
 session = Session()
-db = SQLAlchemy()
-ma = Marshmallow(app)
-
-
-
-
-
-
-class EventSchema(ma.Schema):
-    class Meta:
-        model = Event
-
-class UserSchema(ma.Schema):
-    class Meta:
-        model = User
-
-
 
 
 @app.route('/events', methods=['POST'])
 def add_event():
-    try:
-        event_schema = EventSchema()
-        event_name = request.json.get['event_name']
-        date = request.json.get['date']
-        description = request.json.get['description']
-        status = request.json.get['status']
-        name = request.json.get['name']
-        ownerId = request.json.get['ownerId']
-        new_event = EventSchema(event_name, date, description, status, name, ownerId)
-        db.session.add(new_event)
-        db.session.flush()
-        db.session.refresh(new_event)
-        db.session.commit()
-        return event_schema.jsonify(new_event)
-    except:
-        return {"Status":"Error","StatusCode": 404}
+    json = request.get_json()
+    event_name = json["event_name"]
+    date = json["date"]
+    description = json["description"]
+    status = json["status"]
+    name = json["name"]
+    ownerId = json["ownerId"]
+    new_event = Event(event_name =event_name , date=date, description=description, status=status,
+                      name=name, ownerId=ownerId)
+    session.add(new_event)
+
+    session.commit()
+    return jsonify("Event created")
 
 
-@app.route('/events', methods=['GET'])
+
+
+
+@app.route('/events', methods=['GET']) # =====================
 def get_all_user_events():
     try:
-        event_schema = EventSchema()
-        all_events = event_schema.query().all()
-        result = event_schema.dump(all_events)
-        return jsonify(result)
+        all_events = session.query(Event).all()
+        return jsonify(all_events)
     except:
-        return {"Events": "id:1", "StatusCode":200}
+        return "Error, you have not events", 404
 
 
-@app.route('/events/<int:id>', methods=['PUT'])
+@app.route('/events/<int:id>', methods=['PUT'])#=========================================
 def update_event(id):
     try:
-        event_schema = EventSchema()
-        event = event_schema.query.filter_by(id=id).first()
+        event = session.query(Event).filter_by(id=id).first()
         if 'interested' in request.json:
             if request.json['interested']:
                 event.interested += 1
             else:
                 event.interested -= 1
-            db.session.add(event)
-            db.session.commit()
-            result = event_schema.dump(event)
+            session.add(event)
+            session.commit()
+            result = session.dump(event)
             return jsonify(result)
 
         event_name_update = request.json.get('event_name', '')
@@ -94,51 +75,48 @@ def update_event(id):
             event.status = status_update
         if name_update:
             event.name = name_update
-        db.session.add(event)
+        session.add(event)
 
-        db.session.commit()
-        result = event_schema.dump(event)
+        session.commit()
+        result = session.dump(event)
         return jsonify(result)
     except:
         return "Invalid ID supplied", 400
 
 
-@app.route('/renamevent/<int:id>', methods=['POST'])
+@app.route('/renamevent/<int:id>', methods=['POST']) #=============================
 def rename_event(id):
     try:
-        event_schema = EventSchema()
-        event = event_schema.query.filter_by(id=id).first()
+        event = session.query(Event).filter_by(id=id).first()
         if 'interested' in request.json:
             if request.json['interested']:
                 event.interested += 1
             else:
                 event.interested -= 1
-            db.session.add(event)
-            db.session.commit()
-            result = event_schema.dump(event)
+            session.add(event)
+            session.commit()
+            result = session.dump(event)
             return jsonify(result)
 
         name_update = request.json.get('name', '')
         if name_update:
             event.event_name = name_update
-            db.session.add(event)
-            db.session.commit()
-            result = event_schema.dump(event)
+            session.add(event)
+            session.commit()
+            result = session.dump(event)
             return jsonify(result)
     except:
         return "Invalid input", 405
 
 
-@app.route('/<eventId>', methods=['GET'])
+@app.route('/<int:eventId>', methods=['GET'])
 def getEventById(eventId):
     try:
-        event_schema = EventSchema()
         id = eventId
-        db.session.add(id)
-        db.session.commit()
-        result = event_schema.dump(id)
+        session.add(id)
+        session.commit()
         return {
-            "Status": "Event is active", "name": result, "StatusCode": 200
+            "Status": "Event is active", "name": id, "StatusCode": 200
         }
     except:
         return "Incorrect ID", 404
@@ -147,10 +125,9 @@ def getEventById(eventId):
 @app.route('/events/<int:id>', methods=['DELETE'])
 def delete_event(id):
     try:
-        event_schema = EventSchema()
-        event = event_schema.query.filter_by(id=id).first()
-        db.session.delete(event)
-        db.session.commit()
+        event = session.query(Event).filter_by(id=id).first()
+        session.delete(event)
+        session.commit()
         return {
             "msg": "event deleted successfully",
             "id": id
@@ -161,49 +138,33 @@ def delete_event(id):
 
 @app.route('/createUser', methods=['POST'])
 def createUser():
-    try:
-        user_schema = UserSchema()
-        User_Id = request.form["User_Id"]
-        username = request.form["username"]
-        firstName = request.form["firstName"]
-        lastName = request.form["lastName"]
-        password = request.form["password"]
-        email = request.form["email"]
-        phone = request.form["phone"]
-        userStatus = request.form["userStatus"]
-        res = user_schema.createUser(User_Id, username, firstName, lastName, password, email, phone, userStatus)
+        json = request.get_json()
+        User_Id = json["id"]
+        username = json["username"]
+        firstName = json["firstName"]
+        lastName = json["lastName"]
+        password = json["password"]
+        email = json["email"]
+        phone = json["phone"]
+        userStatus = json["userStatus"]
+        password = generate_password_hash(password).decode('utf-8')
+
+        session.add(User(id=User_Id,username=username,firstName=firstName,lastName=lastName,password=password,
+                               email=email,phone=phone,userStatus=userStatus))
+        session.commit()
         message = {
             'status': 200,
-            'message': 'success',
-            'data': [res]
+            'message': 'success'
         }
-        db.session.add(message)
-        db.session.commit()
-        result = user_schema.dump(message)
-        return jsonify(result)
-    except:
-        return "Can`t create a user", 404
+
+
+        return jsonify(message)
+
 
 
 @app.route('/login', methods=['GET'])
 def login():
-    try:
-        user_schema = UserSchema()
-        login = request.form.get['login', None]
-        password = request.form.get['password', None]
-        if not login:
-            return "Missing login", 400
-        if not password:
-            return "Missing password", 400
-
-        user = user_schema.query.filter_by(email=login).first()
-        if not user:
-            return "User not found", 404
-        if bcrypt.hashpw(password.encode('utf-8'), user.hash):
-            return f'Congrats {login}'
-    except:
-        return "Bad input", 404
-
+    pass
 
 @app.route('/logout', methods=['GET'])
 def log_out():
@@ -213,16 +174,14 @@ def log_out():
         return "Bad input"
 
 
-@app.route('/<UserName>', methods=['GET'])
+@app.route('/<string:username>', methods=['GET'])
 def getUserByName(username):
     try:
-        user_schema = UserSchema()
-        name = username
-        db.session.add(name)
-        db.session.commit()
-        result = user_schema.dump(name)
+        found = username
+        session.add(found)
+        session.commit()
         return {
-            "Status": "Event is active", "name": result, "StatusCode": 200
+            "Status": "User founded", "username": found, "StatusCode": 200
         }
     except:
         return "Incorrect Username", 404
@@ -231,26 +190,29 @@ def getUserByName(username):
 @app.route('/users/<int:id>', methods=['PUT'])
 def update_user(id):
     try:
-        user_schema = UserSchema()
-        user = user_schema.query.filter_by(id=id).first()
-        if 'interested' in request.json:
-            if request.json['interested']:
-                user.interested += 1
-            else:
-                user.interested -= 1
-            db.session.add(user)
-            db.session.commit()
-            result = user_schema.dump(user)
-            return jsonify(result)
-
-        user_name_update = request.json.get('user_name', '')
-
-        if user_name_update:
-            user.event_name = user_name_update
-        db.session.add(user)
-        db.session.commit()
-        result = user_schema.dump(user)
-        return jsonify(result)
+        json = request.get_json()
+        user = session.query(User).filter_by(id=id).first()
+        username_upd = json['username', '']
+        firstName_upd = json('firstName', '')
+        lastName_upd = json('lastName', '')
+        password_upd = json('password', '')
+        email_upd = json('email', '')
+        userStatus_upd = json('userStatus', '')
+        if username_upd:
+            user.username = username_upd
+        if firstName_upd:
+            user.firstName = firstName_upd
+        if lastName_upd:
+            user.lastName = lastName_upd
+        if password_upd:
+            user.password = password_upd
+        if email_upd:
+            user.email = email_upd
+        if userStatus_upd:
+            user.userStatus = userStatus_upd
+        session.add(user)
+        session.commit()
+        return jsonify("User was updated", 200)
     except:
         return "Invalid ID supplied", 400
 
@@ -258,10 +220,9 @@ def update_user(id):
 @app.route('/users/<int:id>', methods=['DELETE'])
 def delete_user(id):
     try:
-        user_schema = UserSchema()
-        user = user_schema.query.filter_by(id=id).first()
-        db.session.delete(user)
-        db.session.commit()
+        user = session.query(User).filter_by(id=id).first()
+        session.delete(user)
+        session.commit()
         return {
             "msg": "User deleted successfully",
             "id": id
