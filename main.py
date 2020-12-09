@@ -1,10 +1,7 @@
-import bcrypt
 from flask_bcrypt import *
 from flask import Flask, jsonify
-from flask_marshmallow import Marshmallow
-from models import Event, User, Column, String, Integer
+from models import Event, User
 from flask_restful import Api, request
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -36,16 +33,16 @@ def add_event():
 
 
 
-@app.route('/events', methods=['GET']) # =====================
+@app.route('/events', methods=['GET']) # ==============================
 def get_all_user_events():
     try:
         all_events = session.query(Event).all()
-        return jsonify(all_events)
+        return jsonify("All events for created users successfully returned",all_events)
     except:
         return "Error, you have not events", 404
 
 
-@app.route('/events/<int:id>', methods=['PUT'])#=========================================
+@app.route('/events/<int:id>', methods=['PUT'])
 def update_event(id):
     try:
         event = session.query(Event).filter_by(id=id).first()
@@ -56,8 +53,7 @@ def update_event(id):
                 event.interested -= 1
             session.add(event)
             session.commit()
-            result = session.dump(event)
-            return jsonify(result)
+            return jsonify("Event was updated","Event_ID: ",id)
 
         event_name_update = request.json.get('event_name', '')
         date_update = request.json.get('date', '')
@@ -76,15 +72,13 @@ def update_event(id):
         if name_update:
             event.name = name_update
         session.add(event)
-
         session.commit()
-        result = session.dump(event)
-        return jsonify(result)
+        return jsonify("Event was updated","Event_ID: ",id)
     except:
         return "Invalid ID supplied", 400
 
 
-@app.route('/renamevent/<int:id>', methods=['POST']) #=============================
+@app.route('/renamevent/<int:id>', methods=['POST'])
 def rename_event(id):
     try:
         event = session.query(Event).filter_by(id=id).first()
@@ -95,16 +89,13 @@ def rename_event(id):
                 event.interested -= 1
             session.add(event)
             session.commit()
-            result = session.dump(event)
-            return jsonify(result)
-
-        name_update = request.json.get('name', '')
+            return jsonify(event)
+        name_update = request.json.get('event_name', '')
         if name_update:
             event.event_name = name_update
             session.add(event)
             session.commit()
-            result = session.dump(event)
-            return jsonify(result)
+            return jsonify("Event was renamed", id)
     except:
         return "Invalid input", 405
 
@@ -112,12 +103,11 @@ def rename_event(id):
 @app.route('/<int:eventId>', methods=['GET'])
 def getEventById(eventId):
     try:
-        id = eventId
-        session.add(id)
+        event = session.query(Event).filter_by(id=eventId).first()
+        found = event
+        session.add(found)
         session.commit()
-        return {
-            "Status": "Event is active", "name": id, "StatusCode": 200
-        }
+        return jsonify("Event found", "EventId: ", eventId)
     except:
         return "Incorrect ID", 404
 
@@ -168,53 +158,63 @@ def login():
 
 @app.route('/logout', methods=['GET'])
 def log_out():
-    try:
-        pass
-    except:
-        return "Bad input"
+    pass
+
 
 
 @app.route('/<string:username>', methods=['GET'])
 def getUserByName(username):
     try:
-        found = username
+        user = session.query(User).filter_by(username=username).first()
+        found = user
         session.add(found)
         session.commit()
-        return {
-            "Status": "User founded", "username": found, "StatusCode": 200
-        }
+        return jsonify("User found","username of this user: ", username)
     except:
         return "Incorrect Username", 404
 
 
 @app.route('/users/<int:id>', methods=['PUT'])
 def update_user(id):
-    try:
-        json = request.get_json()
-        user = session.query(User).filter_by(id=id).first()
-        username_upd = json['username', '']
-        firstName_upd = json('firstName', '')
-        lastName_upd = json('lastName', '')
-        password_upd = json('password', '')
-        email_upd = json('email', '')
-        userStatus_upd = json('userStatus', '')
-        if username_upd:
-            user.username = username_upd
-        if firstName_upd:
-            user.firstName = firstName_upd
-        if lastName_upd:
-            user.lastName = lastName_upd
-        if password_upd:
-            user.password = password_upd
-        if email_upd:
-            user.email = email_upd
-        if userStatus_upd:
-            user.userStatus = userStatus_upd
+    user = session.query(User).filter_by(id=id).first()
+    if 'interested' in request.json:
+        if request.json['interested']:
+            user.interested += 1
+        else:
+            user.interested -= 1
         session.add(user)
         session.commit()
-        return jsonify("User was updated", 200)
-    except:
-        return "Invalid ID supplied", 400
+        return jsonify("User was updated", "User_ID: ", id)
+
+    username_update = request.json.get('username', '')
+    firstName_update = request.json.get('firstName', '')
+    lastName_update = request.json.get('lastName', '')
+    password_update = request.json.get('password', '')
+    email_update = request.json.get('email', '')
+    phone_update = request.json.get('phone', '')
+    userStatus_update = request.json.get('userStatus', '')
+
+    if username_update:
+        user.username = username_update
+    if firstName_update:
+        user.firstName = firstName_update
+    if lastName_update:
+        user.lastName = lastName_update
+    if password_update:
+        user.password = password_update
+    if email_update:
+        user.email = email_update
+    if phone_update:
+        user.phone = phone_update
+    if userStatus_update:
+        user.userStatus = userStatus_update
+    session.add(user)
+    session.commit()
+    return jsonify("User was updated", "User_ID: ", id)
+
+
+
+
 
 
 @app.route('/users/<int:id>', methods=['DELETE'])
