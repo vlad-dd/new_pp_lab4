@@ -20,6 +20,9 @@ class User(Base):
     userStatus = Column(Integer)
     events = relationship("Event", secondary = association_table, back_populates="users")
 
+
+
+
 class Event(Base):
     __tablename__ = 'events'
     id = Column(Integer, primary_key=True)
@@ -29,3 +32,10 @@ class Event(Base):
     status = Column(String)
     name = Column(String)
     users = relationship("User", secondary = association_table, back_populates="events")
+    ownerId = Column(Integer, ForeignKey('users.id'))
+
+
+class RequestedUsers(Base):
+    __tablename__ = 'RequestedUsers'
+    event_id = Column(Integer, ForeignKey('events.id'), primary_key=True, )
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True,)
