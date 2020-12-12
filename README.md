@@ -18,6 +18,19 @@
 
 #7)Після всіх виконаних пунктів, отримуємо наші сутності в бд
 
+#8)Далі для реалізації ендпоінтів починаємо з інсталяції необхідних бібліотек у віртуальному середовищі:
+pip install flask
+pip install jsonlib
+pip install flask-restful
+pip install bcrypt
+pip install SQLAlchemy
+
+#9)Прописуємо шлях до бд
+engine = create_engine('your_db_way')
+
+
+#10)Реалізовуємо всі ендпоінти
+#11)Запускаємо сервер командою python main.py і тестимо запити у Postman.
 
 #Щоб відкотити дб на 1 крок назад ранимо: alembic downgrade -1
 #Щоб апгрейднути усі зміни, ранимо alembic upgrade head
