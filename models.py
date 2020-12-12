@@ -10,7 +10,7 @@ association_table = Table('association', Base.metadata,
 )
 class User(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String)
     firstName = Column(String)
     lastName = Column(String)
@@ -25,7 +25,7 @@ class User(Base):
 
 class Event(Base):
     __tablename__ = 'events'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     event_name = Column(String)
     date = Column(String)
     description = Column(String)

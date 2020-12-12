@@ -1,9 +1,10 @@
 from flask_bcrypt import *
 from flask import Flask, jsonify
-from models import Event, User
+from models import Event, User, RequestedUsers
 from flask_restful import Api, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 
 
 app = Flask(__name__)
@@ -25,15 +26,16 @@ def add_event():
     new_event = Event(event_name =event_name , date=date, description=description, status=status,
                       name=name, ownerId=ownerId)
     session.add(new_event)
-
     session.commit()
-    return jsonify("Event created")
+    message = {
+        'status': 200,
+        'message': 'success'
+    }
+    return jsonify(message)
 
 
 
-
-
-@app.route('/events', methods=['GET']) # ==============================
+@app.route('/events', methods=['GET'])
 def get_all_user_events():
     try:
         all_events = session.query(Event).all()
@@ -97,7 +99,7 @@ def rename_event(id):
             session.commit()
             return jsonify("Event was renamed", id)
     except:
-        return "Invalid input", 405
+        return "Method not allowed", 405
 
 
 @app.route('/<int:eventId>', methods=['GET'])
@@ -129,7 +131,6 @@ def delete_event(id):
 @app.route('/createUser', methods=['POST'])
 def createUser():
         json = request.get_json()
-        User_Id = json["id"]
         username = json["username"]
         firstName = json["firstName"]
         lastName = json["lastName"]
@@ -139,7 +140,7 @@ def createUser():
         userStatus = json["userStatus"]
         password = generate_password_hash(password).decode('utf-8')
 
-        session.add(User(id=User_Id,username=username,firstName=firstName,lastName=lastName,password=password,
+        session.add(User(username=username,firstName=firstName,lastName=lastName,password=password,
                                email=email,phone=phone,userStatus=userStatus))
         session.commit()
         message = {
@@ -213,8 +214,15 @@ def update_user(id):
     return jsonify("User was updated", "User_ID: ", id)
 
 
-
-
+@app.route("/add_to_events", methods=['POST'])
+def add_to_events():
+    json = request.get_json()
+    user_id = json["user_id"]
+    event_id = json["event_id"]
+    requested = RequestedUsers(user_id=user_id, event_id=event_id)
+    session.add(requested)
+    session.commit()
+    return jsonify("User was added", 200)
 
 
 @app.route('/users/<int:id>', methods=['DELETE'])
