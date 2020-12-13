@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, PrimaryKeyConstraint, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -19,6 +18,8 @@ class User(Base):
     phone = Column(String)
     userStatus = Column(Integer)
     events = relationship("Event", secondary = association_table, back_populates="users")
+    created_events = relationship("Event")
+
 
 
 
