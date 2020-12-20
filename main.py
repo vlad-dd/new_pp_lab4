@@ -47,7 +47,7 @@ def add_event():
 
 
 
-@app.route('/events/all', methods=['GET']) # ==============================
+@app.route('/events/all', methods=['GET'])
 @jwt_required()
 def get_all_user_events():
     try:
