@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, PrimaryKeyConstraint, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,7 +9,7 @@ association_table = Table('association', Base.metadata,
 )
 class User(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String)
     firstName = Column(String)
     lastName = Column(String)
@@ -19,13 +18,15 @@ class User(Base):
     phone = Column(String)
     userStatus = Column(Integer)
     events = relationship("Event", secondary = association_table, back_populates="users")
+    created_events = relationship("Event")
+
 
 
 
 
 class Event(Base):
     __tablename__ = 'events'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     event_name = Column(String)
     date = Column(String)
     description = Column(String)

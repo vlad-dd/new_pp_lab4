@@ -1,0 +1,3 @@
+[run]
+source = main
+omit = *alembic*, *.idea*, *poetry*, *htmlcov*

@@ -1,5 +1,7 @@
 from flask_bcrypt import *
 from flask import Flask, jsonify
+import hashlib
+from flask_jwt import JWT, jwt_required, current_identity
 from models import Event, User
 from flask_restful import Api, request
 from sqlalchemy import create_engine
@@ -8,12 +10,25 @@ from sqlalchemy.orm import sessionmaker
 
 app = Flask(__name__)
 api = Api(app)
+app.config['SECRET_KEY'] = 'super-secret'
 engine = create_engine('postgresql://postgres:4412712345@localhost:5432/postgres')
 Session = sessionmaker(bind=engine)
 session = Session()
 
 
+
+def authenticate(username, password):
+    user = session.query(User).filter_by(username=username, password=hashlib.md5(password.encode()).hexdigest()).first()
+    return user
+
+def identity(payload):
+    user_id = payload['identity']
+    return session.query(User).filter_by(id=user_id).first()
+
+jwt = JWT(app, authenticate, identity)
+
 @app.route('/events', methods=['POST'])
+@jwt_required()
 def add_event():
     json = request.get_json()
     event_name = json["event_name"]
@@ -21,19 +36,19 @@ def add_event():
     description = json["description"]
     status = json["status"]
     name = json["name"]
-    ownerId = json["ownerId"]
     new_event = Event(event_name =event_name , date=date, description=description, status=status,
-                      name=name, ownerId=ownerId)
+                      name=name, ownerId=json['ownerId'])
     session.add(new_event)
-
     session.commit()
+    current_identity.events.append(session.query(Event).filter_by(ownerId=json['ownerId']).first())
     return jsonify("Event created")
 
 
 
 
 
-@app.route('/events', methods=['GET']) # ==============================
+@app.route('/events/all', methods=['GET'])
+@jwt_required()
 def get_all_user_events():
     try:
         all_events = session.query(Event).all()
@@ -42,194 +57,145 @@ def get_all_user_events():
         return "Error, you have not events", 404
 
 
-@app.route('/events/<int:id>', methods=['PUT'])
+@app.route('/events/update/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_event(id):
     try:
         event = session.query(Event).filter_by(id=id).first()
-        if 'interested' in request.json:
-            if request.json['interested']:
-                event.interested += 1
-            else:
-                event.interested -= 1
-            session.add(event)
+        if event in current_identity.created_events:
+            event_name_update = request.json.get('event_name', '')
+            date_update = request.json.get('date', '')
+            description_update = request.json.get('description', '')
+            status_update = request.json.get('status', '')
+            name_update = request.json.get('name', '')
+
+            if event_name_update:
+                event.event_name = event_name_update
+            if date_update:
+                event.date = date_update
+            if description_update:
+                event.description = description_update
+            if status_update:
+                event.status = status_update
+            if name_update:
+                event.name = name_update
             session.commit()
-            return jsonify("Event was updated","Event_ID: ",id)
-
-        event_name_update = request.json.get('event_name', '')
-        date_update = request.json.get('date', '')
-        description_update = request.json.get('description', '')
-        status_update = request.json.get('status', '')
-        name_update = request.json.get('name', '')
-
-        if event_name_update:
-            event.event_name = event_name_update
-        if date_update:
-            event.date = date_update
-        if description_update:
-            event.description = description_update
-        if status_update:
-            event.status = status_update
-        if name_update:
-            event.name = name_update
-        session.add(event)
-        session.commit()
-        return jsonify("Event was updated","Event_ID: ",id)
+            return jsonify("Event was updated"), 202
+        return 'Event does not belong to user', 404
     except:
-        return "Invalid ID supplied", 400
+        return "Invalid ID supplied", 403
 
 
 @app.route('/renamevent/<int:id>', methods=['POST'])
+@jwt_required()
 def rename_event(id):
     try:
         event = session.query(Event).filter_by(id=id).first()
-        if 'interested' in request.json:
-            if request.json['interested']:
-                event.interested += 1
-            else:
-                event.interested -= 1
-            session.add(event)
-            session.commit()
-            return jsonify(event)
-        name_update = request.json.get('event_name', '')
-        if name_update:
-            event.event_name = name_update
-            session.add(event)
-            session.commit()
-            return jsonify("Event was renamed", id)
+        if event in current_identity.events:
+            name_update = request.json.get('event_name', '')
+            if name_update:
+                event.event_name = name_update
+                session.commit()
+                return jsonify("Event was renamed")
+        return 'Event does not belong to user', 404
     except:
         return "Invalid input", 405
 
 
 @app.route('/<int:eventId>', methods=['GET'])
+@jwt_required()
 def getEventById(eventId):
     try:
         event = session.query(Event).filter_by(id=eventId).first()
-        found = event
-        session.add(found)
-        session.commit()
-        return jsonify("Event found", "EventId: ", eventId)
+        if event is not None:
+            return jsonify("Event found", "EventId: ")
     except:
-        return "Incorrect ID", 404
+        return jsonify("Incorrect ID"), 404
+
 
 
 @app.route('/events/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_event(id):
     try:
         event = session.query(Event).filter_by(id=id).first()
-        session.delete(event)
-        session.commit()
-        return {
-            "msg": "event deleted successfully",
-            "id": id
-        }
+        if event in current_identity.events:
+            session.delete(event)
+            session.commit()
+            return {
+                "msg": "event deleted successfully",
+                "id": id
+            }
+        return 'Event does not belong to user', 404
     except:
         return "Event not found", 404
 
 
 @app.route('/createUser', methods=['POST'])
 def createUser():
-        json = request.get_json()
-        User_Id = json["id"]
-        username = json["username"]
-        firstName = json["firstName"]
-        lastName = json["lastName"]
-        password = json["password"]
-        email = json["email"]
-        phone = json["phone"]
-        userStatus = json["userStatus"]
-        password = generate_password_hash(password).decode('utf-8')
+    json = request.get_json()
+    username = json["username"]
+    firstName = json["firstName"]
+    lastName = json["lastName"]
+    password = json["password"]
+    email = json["email"]
+    phone = json["phone"]
+    userStatus = json["userStatus"]
+    password = hashlib.md5(password.encode()).hexdigest()
 
-        session.add(User(id=User_Id,username=username,firstName=firstName,lastName=lastName,password=password,
-                               email=email,phone=phone,userStatus=userStatus))
-        session.commit()
-        message = {
-            'status': 200,
-            'message': 'success'
-        }
+    session.add(User(username=username, firstName=firstName, lastName=lastName, password=password,
+                     email=email, phone=phone, userStatus=userStatus))
+    session.commit()
+    message = {
+        'status': 200,
+        'message': 'success'
+    }
 
-
-        return jsonify(message)
-
-
-
-@app.route('/login', methods=['GET'])
-def login():
-    pass
-
-@app.route('/logout', methods=['GET'])
-def log_out():
-    pass
-
-
-
-@app.route('/<string:username>', methods=['GET'])
-def getUserByName(username):
-    try:
-        user = session.query(User).filter_by(username=username).first()
-        found = user
-        session.add(found)
-        session.commit()
-        return jsonify("User found","username of this user: ", username)
-    except:
-        return "Incorrect Username", 404
-
+    return jsonify(message)
 
 @app.route('/users/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_user(id):
     user = session.query(User).filter_by(id=id).first()
-    if 'interested' in request.json:
-        if request.json['interested']:
-            user.interested += 1
-        else:
-            user.interested -= 1
-        session.add(user)
+    if user == current_identity:
+        username_update = request.json.get('username', '')
+        firstName_update = request.json.get('firstName', '')
+        lastName_update = request.json.get('lastName', '')
+        password_update = request.json.get('password', '')
+        email_update = request.json.get('email', '')
+        phone_update = request.json.get('phone', '')
+        userStatus_update = request.json.get('userStatus', '')
+
+        if username_update:
+            user.username = username_update
+        if firstName_update:
+            user.firstName = firstName_update
+        if lastName_update:
+            user.lastName = lastName_update
+        if password_update:
+            user.password = password_update
+        if email_update:
+            user.email = email_update
+        if phone_update:
+            user.phone = phone_update
+        if userStatus_update:
+            user.userStatus = userStatus_update
         session.commit()
         return jsonify("User was updated", "User_ID: ", id)
-
-    username_update = request.json.get('username', '')
-    firstName_update = request.json.get('firstName', '')
-    lastName_update = request.json.get('lastName', '')
-    password_update = request.json.get('password', '')
-    email_update = request.json.get('email', '')
-    phone_update = request.json.get('phone', '')
-    userStatus_update = request.json.get('userStatus', '')
-
-    if username_update:
-        user.username = username_update
-    if firstName_update:
-        user.firstName = firstName_update
-    if lastName_update:
-        user.lastName = lastName_update
-    if password_update:
-        user.password = password_update
-    if email_update:
-        user.email = email_update
-    if phone_update:
-        user.phone = phone_update
-    if userStatus_update:
-        user.userStatus = userStatus_update
-    session.add(user)
-    session.commit()
-    return jsonify("User was updated", "User_ID: ", id)
-
-
-
-
-
+    return 'You don\'t have access', 404
 
 @app.route('/users/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_user(id):
     try:
         user = session.query(User).filter_by(id=id).first()
-        session.delete(user)
-        session.commit()
-        return {
-            "msg": "User deleted successfully",
-            "id": id
-        }
+        if user == current_identity:
+            session.delete(user)
+            session.commit()
+            return {
+                "msg": "User deleted successfully",
+                "id": id
+            }
+        return 'You don\'t have access', 404
     except:
-        return "User not found", 404
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+        return jsonify("User not found")
